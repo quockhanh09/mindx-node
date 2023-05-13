@@ -3,6 +3,8 @@ const mongoose = require('mongoose')
 const { userRouter } = require('./routes/user')
 const jwt = require('jsonwebtoken')
 const { users, userModel } = require('./models/user')
+const bcrypt = require('bcrypt')
+const { songRouter } = require('./routes/song')
 
 const app = express()
 
@@ -13,7 +15,8 @@ const authenticationCheck = async (req, res, next) => {
     const decoded = jwt.verify(token, '123@lol');
     const { username } = decoded
     // Check user co trong co so du lieu khong 
-    const user = await userModel.findOne({ username: username })
+    const user = await userModel.findOne({ username: username }).populate('songs').select('username')
+
     if (user) {
         req.user = user
         next()
@@ -23,40 +26,47 @@ const authenticationCheck = async (req, res, next) => {
 }
 
 app.use('/users', authenticationCheck, userRouter)
-// app.use('/song', songRouter)
+app.use('/songs', authenticationCheck, songRouter)
 
 app.get('/', (req, res) => {
     res.send('Home router')
 })
 
-app.post('/register', async (req, res) => {
-    const { username, password } = req.body
-    // Check trung username trong db, 
-    // neu trung username thi khong cho tao user, neu khong trung thi tao user
-    // => tim user co username == req.body.username
-    // => neu ton tai thi res.send('User da ton tai')
-    // => neu khong thi create
-    const existingUser = await userModel.findOne({ username })
-    if (existingUser) {
-        res.send('User da ton tai')
-    } else {
-        const user = await userModel.create({ username, password, role: ['user'] })
-        res.send(user)
-    }
-})
-
 app.post('/login', async (req, res) => {
     const { username, password } = req.body
-    // Check trong db
-    const user = await userModel.findOne({ username, password })
-    // Nếu có user thì trả token, còn không thì trả lỗi
-    if (user) {
+    //check trong db
+    const user = await userModel.findOne({ username })
+    //nếu có user thì trả token , còn không thì trả lỗi
+    if (user && bcrypt.compareSync(password, user.password)) {
         const token = jwt.sign({ username: username }, '123@lol')
         // Tra token cho client
         res.send({ token: token })
     } else {
-        res.send('Khong tim thay user')
+        res.send('khong tim thay')
     }
+})
+
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body
+    // check trùng username trong db 
+    const existringUser = await userModel.findOne({ username })
+    // nếu trùng thì không cho tạo , nếu không trùng thì tạo user 
+    // tim user có usename == req.body.username
+    // nếu tồn tại thì res.send('user da ton tại )
+    // nếu ko thì create
+    if (existringUser) {
+        res.send('user ton tại')
+    } else {
+        const salt = bcrypt.genSaltSync(10);
+        const hashPassword = bcrypt.hashSync(password,salt)
+        const user = await userModel.create({ username, password: hashPassword, role: ['user'] })
+        res.send(user)
+    }
+
+})
+
+app.put('/update', async (req, res) => {
+    const { username, password } = res.body
 })
 
 app.listen(3000)
