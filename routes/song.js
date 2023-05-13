@@ -3,7 +3,7 @@ const { songModel } = require('../models/song')
 
 const songRouter = express.Router()
 
-songRouter.post('/', async (req, res) => {
+songRouter.post('', async (req, res) => {
     try {
         const {name, author} = req.body
         const song = await songModel.create({name, author})

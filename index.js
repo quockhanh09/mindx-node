@@ -8,6 +8,8 @@ const { songRouter } = require('./routes/song')
 
 const app = express()
 
+
+mongoose.connect('mongodb+srv://mindx:SJGpUTkbL3alyyQj@cluster0.6ho40kz.mongodb.net/mindx')
 app.use(express.json())
 
 const authenticationCheck = async (req, res, next) => {
